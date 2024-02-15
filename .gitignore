@@ -1,2 +1,7 @@
 /venv
 requirements.txt
+*.sqlite3
+__pycache__
+*.log
+*.pot
+*.pyc
