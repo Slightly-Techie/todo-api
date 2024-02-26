@@ -1,9 +1,12 @@
 from django.shortcuts import render, redirect
-from .models import ToDo
+from .models import ToDo, User
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.decorators import api_view
-from .serializer import ToDoSerializer
+from .serializer import ToDoSerializer, UserSerializer
+import jwt
+import datetime
 
 
 @api_view(['GET'])
@@ -61,3 +64,93 @@ def delete_todo(request, todo_id):
         return Response('Task deleted successfully', status=200)
     else:
         return Response('Task not found', status=404)
+
+
+@api_view(['GET'])
+def get_all_users(request):
+    users = User.objects.all()
+    if users:
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data, status=200)
+    else:
+        return Response(status=400)
+
+
+@api_view(['GET'])
+def user_profile(request):
+    token = request.COOKIES.get('jwt')
+    if token:
+        payload = jwt.decode(token, 'Thisisasecret', algorithms="HS256")
+        user = User.objects.filter(id=payload['id']).first()
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+    else:
+        raise AuthenticationFailed('User not logged in')
+
+
+@api_view(['POST'])
+def signup(request):
+    serializer = UserSerializer(data=request.data)
+    if serializer.is_valid(raise_exception=True):
+        serializer.save()
+
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+def login(request):
+    email = request.data['email']
+    password = request.data['password']
+
+    user = User.objects.filter(email=email).first()
+
+    if user is None:
+        raise AuthenticationFailed('User not found')
+
+    if not user.check_password(password):
+        raise AuthenticationFailed('Invalid credentials')
+
+    payload = {
+        "id": user.id,
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=60),
+        "iat": datetime.datetime.utcnow()
+    }
+
+    token = jwt.encode(payload, 'Thisisasecret', algorithm="HS256")
+
+    response = Response()
+
+    response.set_cookie(key='jwt', value=token, httponly=True)
+
+    response.data = {
+        "message": "Login successful",
+        "jwt": token
+    }
+    return response
+
+
+@api_view(['DELETE'])
+def delete_user(request, user_id):
+    user = User.objects.filter(id=user_id).first()
+    if user:
+        user.delete()
+        return Response({
+            "message": "User deleted successfully"
+        })
+    else:
+        return Response({
+            "message": "User not found"
+        })
+
+
+@api_view(['POST'])
+def logout(request):
+    response = Response()
+
+    response.delete_cookie('jwt')
+
+    response.data = {
+        'message': 'User logged out successfully'
+    }
+
+    return response
