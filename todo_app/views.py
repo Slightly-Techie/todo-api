@@ -129,7 +129,6 @@ def login(request):
     password = request.data['password']
 
     user = User.objects.filter(email=email).first()
-    print(user)
 
     if user is None:
         raise AuthenticationFailed('User not found')
@@ -150,7 +149,6 @@ def login(request):
     response.set_cookie(key='jwt', value=token, httponly=True)
 
     response.data = {
-        # "user": user['name'],
         "message": "Login successful",
         "jwt": token
     }
