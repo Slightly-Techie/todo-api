@@ -1,2 +1,6 @@
 /venv
-requirements.txt
+*.pyc
+__pycache__
+db.sqlite3
+*.env
+.vscode
