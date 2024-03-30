@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ToDo
+from .models import ToDo, User
 
 
 class ToDoSerializer(serializers.ModelSerializer):
@@ -8,6 +8,20 @@ class ToDoSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'description', 'completed', 'date_created']
 
 
-# class ToDoViewSet(viewsets.ModelViewSet):
-#     queryset = ToDo.objects.all()
-#     serializer_class = ToDoSerializer
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'name', 'email', 'password']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        instance = self.Meta.model(**validated_data)
+
+        if password is not None:
+            instance.set_password(password)
+
+        instance.save()
+        return instance
